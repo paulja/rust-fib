@@ -14,8 +14,10 @@ fib <COMMAND> <N>
 |---------|-------------|
 | `number N` | Calculate the Nth Fibonacci number |
 | `sequence N` | Print the first N Fibonacci numbers |
+| `serve` | Start the HTTP server |
+| `grpc` | Start the gRPC server |
 
-Valid range: `1–92` (max for u64 without overflow)
+Valid range for `number` and `sequence`: `1–92` (max for u64 without overflow)
 
 ### Examples
 
@@ -42,6 +44,8 @@ fib sequence 10
 cargo build --release
 cargo run -- number 10
 cargo run -- sequence 10
+cargo run -- serve
+cargo run -- grpc
 ```
 
 ## Test

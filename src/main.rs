@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-use num_format::{Locale, ToFormattedString};
 
+mod commands;
 mod fib;
 
 /// Fibonacci number calculator.
@@ -22,20 +22,18 @@ enum Command {
         #[arg(value_parser = clap::value_parser!(u64).range(1..=92))]
         sequence: u64,
     },
+    /// Start the HTTP server.
+    Serve,
+    /// Start the gRPC server.
+    Grpc,
 }
 
 fn main() {
     let args = Cli::parse();
-    let mut fib = fib::fibonacci();
     match args.command {
-        Command::Number { number } => {
-            let result = (0..number).map(|_| fib()).last().unwrap_or(0);
-            println!("{}", result.to_formatted_string(&Locale::en));
-        }
-        Command::Sequence { sequence } => {
-            (0..sequence)
-                .map(|_| fib())
-                .for_each(|n| println!("{}", n.to_formatted_string(&Locale::en)));
-        }
+        Command::Number { number } => commands::number::run(number),
+        Command::Sequence { sequence } => commands::sequence::run(sequence),
+        Command::Serve => commands::serve::run(),
+        Command::Grpc => commands::grpc::run(),
     }
 }
