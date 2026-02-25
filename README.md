@@ -38,6 +38,28 @@ fib sequence 10
 # 55
 ```
 
+### HTTP API
+
+Start the server with `fib serve`, then use the following endpoints:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/fib/{n}` | Returns the nth Fibonacci number |
+| `GET` | `/fib/sequence/{n}` | Returns the first n Fibonacci numbers |
+
+Valid range for `n`: `1–92`
+
+```sh
+curl http://localhost:3000/fib/10
+# {"n":10,"value":55}
+
+curl http://localhost:3000/fib/sequence/5
+# {"n":5,"values":[1,1,2,3,5]}
+
+curl http://localhost:3000/fib/100
+# {"error":"n must be between 1 and 92"}
+```
+
 ## Build & Run
 
 ```sh
