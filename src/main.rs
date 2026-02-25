@@ -1,3 +1,8 @@
+mod fib;
+
 fn main() {
-    println!("Hello, world!");
+    let mut fib = fib::fibonacci();
+    for _ in 0..30 {
+        print!("{} ", fib());
+    }
 }
