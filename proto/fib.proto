@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package fib;
+
+service FibonacciService {
+  rpc Number(NumberRequest) returns (NumberResponse);
+  rpc Sequence(SequenceRequest) returns (stream SequenceResponse);
+}
+
+message NumberRequest {
+  uint64 n = 1;
+}
+
+message NumberResponse {
+  uint64 n = 1;
+  uint64 value = 2;
+}
+
+message SequenceRequest {
+  uint64 n = 1;
+}
+
+message SequenceResponse {
+  uint64 value = 1;
+}

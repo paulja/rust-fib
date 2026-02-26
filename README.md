@@ -60,6 +60,32 @@ curl http://localhost:3000/fib/100
 # {"error":"n must be between 1 and 92"}
 ```
 
+### gRPC API
+
+Start the server with `fib grpc` (listens on port `50051`), then use `grpcurl`:
+
+| RPC | Description |
+|-----|-------------|
+| `fib.FibonacciService/Number` | Returns the nth Fibonacci number |
+| `fib.FibonacciService/Sequence` | Streams the first n Fibonacci numbers |
+
+Valid range for `n`: `1–92`
+
+```sh
+grpcurl -plaintext -d '{"n": 10}' localhost:50051 fib.FibonacciService/Number
+# {"n": "10", "value": "55"}
+
+grpcurl -plaintext -d '{"n": 5}' localhost:50051 fib.FibonacciService/Sequence
+# {"value": "1"}
+# {"value": "1"}
+# {"value": "2"}
+# {"value": "3"}
+# {"value": "5"}
+
+# List available services (requires reflection)
+grpcurl -plaintext localhost:50051 list
+```
+
 ## Build & Run
 
 ```sh
