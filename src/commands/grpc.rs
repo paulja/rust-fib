@@ -15,7 +15,7 @@ use proto::{NumberRequest, NumberResponse, SequenceRequest, SequenceResponse};
 use tower_http::trace::TraceLayer;
 
 #[derive(Default)]
-struct FibService;
+pub(crate) struct FibService;
 
 #[tonic::async_trait]
 impl FibonacciService for FibService {
@@ -82,4 +82,127 @@ pub fn run() {
             .await
             .unwrap();
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proto::{NumberRequest, SequenceRequest};
+    use tokio_stream::StreamExt;
+    use tonic::Code;
+
+    fn service() -> FibService {
+        FibService::default()
+    }
+
+    // --- Number RPC ---
+
+    #[tokio::test]
+    async fn number_returns_correct_value() {
+        let resp = service()
+            .number(Request::new(NumberRequest { n: 10 }))
+            .await
+            .unwrap();
+        let msg = resp.into_inner();
+        assert_eq!(msg.n, 10);
+        assert_eq!(msg.value, 55);
+    }
+
+    #[tokio::test]
+    async fn number_min_boundary() {
+        let resp = service()
+            .number(Request::new(NumberRequest { n: 1 }))
+            .await
+            .unwrap();
+        assert_eq!(resp.into_inner().value, 1);
+    }
+
+    #[tokio::test]
+    async fn number_max_boundary() {
+        let resp = service()
+            .number(Request::new(NumberRequest { n: 92 }))
+            .await
+            .unwrap();
+        assert_eq!(resp.into_inner().n, 92);
+    }
+
+    #[tokio::test]
+    async fn number_rejects_zero() {
+        let err = service()
+            .number(Request::new(NumberRequest { n: 0 }))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code(), Code::InvalidArgument);
+    }
+
+    #[tokio::test]
+    async fn number_rejects_above_max() {
+        let err = service()
+            .number(Request::new(NumberRequest { n: 93 }))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code(), Code::InvalidArgument);
+    }
+
+    // --- Sequence RPC ---
+
+    #[tokio::test]
+    async fn sequence_returns_correct_values() {
+        let resp = service()
+            .sequence(Request::new(SequenceRequest { n: 5 }))
+            .await
+            .unwrap();
+        let values: Vec<u64> = resp
+            .into_inner()
+            .map(|r| r.unwrap().value)
+            .collect()
+            .await;
+        assert_eq!(values, vec![1, 1, 2, 3, 5]);
+    }
+
+    #[tokio::test]
+    async fn sequence_min_boundary() {
+        let resp = service()
+            .sequence(Request::new(SequenceRequest { n: 1 }))
+            .await
+            .unwrap();
+        let values: Vec<u64> = resp
+            .into_inner()
+            .map(|r| r.unwrap().value)
+            .collect()
+            .await;
+        assert_eq!(values, vec![1]);
+    }
+
+    #[tokio::test]
+    async fn sequence_max_boundary() {
+        let resp = service()
+            .sequence(Request::new(SequenceRequest { n: 92 }))
+            .await
+            .unwrap();
+        let values: Vec<u64> = resp
+            .into_inner()
+            .map(|r| r.unwrap().value)
+            .collect()
+            .await;
+        assert_eq!(values.len(), 92);
+    }
+
+    #[tokio::test]
+    async fn sequence_rejects_zero() {
+        let err = service()
+            .sequence(Request::new(SequenceRequest { n: 0 }))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code(), Code::InvalidArgument);
+    }
+
+    #[tokio::test]
+    async fn sequence_rejects_above_max() {
+        let err = service()
+            .sequence(Request::new(SequenceRequest { n: 93 }))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code(), Code::InvalidArgument);
+    }
 }
