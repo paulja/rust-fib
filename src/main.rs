@@ -29,6 +29,12 @@ enum Command {
 }
 
 fn main() {
+    tracing_subscriber::fmt()
+        .json()
+        .with_env_filter("info,tower_http=debug")
+        .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
+        .init();
+
     let args = Cli::parse();
     match args.command {
         Command::Number { number } => commands::number::run(number),

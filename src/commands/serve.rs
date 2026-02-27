@@ -1,6 +1,7 @@
 use crate::fib::fibonacci;
 use axum::{Json, Router, extract::Path, http::StatusCode, routing::get};
 use serde::Serialize;
+use tower_http::trace::TraceLayer;
 
 #[derive(Serialize)]
 struct FibNumberResponse {
@@ -54,7 +55,8 @@ pub fn run() {
     rt.block_on(async {
         let app = Router::new()
             .route("/fib/{n}", get(fib_number))
-            .route("/fib/sequence/{n}", get(fib_sequence));
+            .route("/fib/sequence/{n}", get(fib_sequence))
+            .layer(TraceLayer::new_for_http());
 
         let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
         println!("Listening on http://0.0.0.0:3000");

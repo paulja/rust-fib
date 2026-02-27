@@ -12,6 +12,7 @@ pub mod proto {
 
 use proto::fibonacci_service_server::{FibonacciService, FibonacciServiceServer};
 use proto::{NumberRequest, NumberResponse, SequenceRequest, SequenceResponse};
+use tower_http::trace::TraceLayer;
 
 #[derive(Default)]
 struct FibService;
@@ -74,6 +75,7 @@ pub fn run() {
         println!("gRPC server listening on {}", addr);
 
         Server::builder()
+            .layer(TraceLayer::new_for_grpc())
             .add_service(FibonacciServiceServer::new(service))
             .add_service(reflection)
             .serve(addr)

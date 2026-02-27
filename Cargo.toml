@@ -16,6 +16,10 @@ tonic-reflection = "0.14"
 prost = "0.14"
 tonic-prost = "0.14.5"
 tokio-stream = "0.1"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = [ "env-filter", "json", "time" ] }
+tower-http = { version = "0.6.8", features = ["trace"] }
+tower = "0.5.3"
 
 [build-dependencies]
 tonic-prost-build = "0.14"
