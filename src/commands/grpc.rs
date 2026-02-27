@@ -65,7 +65,7 @@ pub fn run() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let addr = "0.0.0.0:50051".parse().unwrap();
-        let service = FibService::default();
+        let service = FibService;
 
         let reflection = ReflectionBuilder::configure()
             .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
@@ -152,11 +152,7 @@ mod tests {
             .sequence(Request::new(SequenceRequest { n: 5 }))
             .await
             .unwrap();
-        let values: Vec<u64> = resp
-            .into_inner()
-            .map(|r| r.unwrap().value)
-            .collect()
-            .await;
+        let values: Vec<u64> = resp.into_inner().map(|r| r.unwrap().value).collect().await;
         assert_eq!(values, vec![1, 1, 2, 3, 5]);
     }
 
@@ -166,11 +162,7 @@ mod tests {
             .sequence(Request::new(SequenceRequest { n: 1 }))
             .await
             .unwrap();
-        let values: Vec<u64> = resp
-            .into_inner()
-            .map(|r| r.unwrap().value)
-            .collect()
-            .await;
+        let values: Vec<u64> = resp.into_inner().map(|r| r.unwrap().value).collect().await;
         assert_eq!(values, vec![1]);
     }
 
@@ -180,11 +172,7 @@ mod tests {
             .sequence(Request::new(SequenceRequest { n: 92 }))
             .await
             .unwrap();
-        let values: Vec<u64> = resp
-            .into_inner()
-            .map(|r| r.unwrap().value)
-            .collect()
-            .await;
+        let values: Vec<u64> = resp.into_inner().map(|r| r.unwrap().value).collect().await;
         assert_eq!(values.len(), 92);
     }
 
