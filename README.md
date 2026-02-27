@@ -96,6 +96,44 @@ cargo run -- serve
 cargo run -- grpc
 ```
 
+## Docker
+
+The `docker/` directory contains Dockerfiles for each server and a compose file to run both together.
+
+| File | Description |
+|------|-------------|
+| `docker/Dockerfile.http` | HTTP server image (port `3000`) |
+| `docker/Dockerfile.grpc` | gRPC server image (port `50051`) |
+| `docker/compose.yaml` | Launches both services |
+
+```sh
+# Run both services
+docker compose -f docker/compose.yaml up
+
+# Run a single service
+docker compose -f docker/compose.yaml up http
+docker compose -f docker/compose.yaml up grpc
+```
+
+## Logging
+
+Both servers emit structured JSON logs to stdout using the `tracing` ecosystem. Log level is controlled by the `RUST_LOG` environment variable (default: `info`).
+
+```sh
+RUST_LOG=debug cargo run -- serve
+RUST_LOG=info,tower_http=debug cargo run -- grpc
+```
+
+To set the log level in Docker:
+
+```yaml
+# docker/compose.yaml
+services:
+  grpc:
+    environment:
+      - RUST_LOG=info,tower_http=debug
+```
+
 ## Test
 
 ```sh

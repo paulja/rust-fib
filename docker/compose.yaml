@@ -1,0 +1,16 @@
+services:
+  grpc:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.grpc
+      target: final
+    ports:
+      - 50051:50051
+
+  http:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.http
+      target: final
+    ports:
+      - 3000:3000
