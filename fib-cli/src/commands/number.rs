@@ -1,6 +1,5 @@
+use fib_core::fibonacci;
 use num_format::{Locale, ToFormattedString};
-
-use crate::fib::fibonacci;
 
 pub fn run(n: u64) {
     let mut fib = fibonacci();
@@ -10,7 +9,7 @@ pub fn run(n: u64) {
 
 #[cfg(test)]
 mod tests {
-    use crate::fib::fibonacci;
+    use fib_core::fibonacci;
 
     #[test]
     fn test_number_10() {

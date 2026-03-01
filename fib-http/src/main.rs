@@ -1,5 +1,5 @@
-use crate::fib::fibonacci;
 use axum::{Json, Router, extract::Path, http::StatusCode, routing::get};
+use fib_core::fibonacci;
 use serde::Serialize;
 use tower_http::trace::TraceLayer;
 
@@ -57,7 +57,7 @@ pub(crate) fn router() -> Router {
         .layer(TraceLayer::new_for_http())
 }
 
-pub fn run() {
+fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();

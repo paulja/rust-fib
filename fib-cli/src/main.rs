@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 
 mod commands;
-mod fib;
 
 /// Fibonacci number calculator.
 #[derive(Parser)]
@@ -22,10 +21,6 @@ enum Command {
         #[arg(value_parser = clap::value_parser!(u64).range(1..=92))]
         sequence: u64,
     },
-    /// Start the HTTP server.
-    Serve,
-    /// Start the gRPC server.
-    Grpc,
 }
 
 fn main() {
@@ -39,7 +34,5 @@ fn main() {
     match args.command {
         Command::Number { number } => commands::number::run(number),
         Command::Sequence { sequence } => commands::sequence::run(sequence),
-        Command::Serve => commands::serve::run(),
-        Command::Grpc => commands::grpc::run(),
     }
 }

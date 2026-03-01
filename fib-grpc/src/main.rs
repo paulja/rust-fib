@@ -1,4 +1,4 @@
-use crate::fib::fibonacci;
+use fib_core::fibonacci;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status, transport::Server};
@@ -61,7 +61,7 @@ impl FibonacciService for FibService {
     }
 }
 
-pub fn run() {
+fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let addr = "0.0.0.0:50051".parse().unwrap();
