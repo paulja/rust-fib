@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1
+
+ARG RUST_VERSION=1.93.1
+ARG GO_VERSION=1.26.0
+
+# ── Stage 1: build the Rust static library ───────────────────────────────────
+FROM rust:${RUST_VERSION}-alpine AS rust-build
+WORKDIR /app
+
+RUN apk add --no-cache musl-dev
+
+RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    --mount=type=bind,source=fib-core,target=fib-core \
+    --mount=type=bind,source=fib-cli,target=fib-cli \
+    --mount=type=bind,source=fib-http,target=fib-http \
+    --mount=type=bind,source=fib-grpc,target=fib-grpc \
+    --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    cargo build --locked --release -p fib-core && \
+    cp ./target/release/libfib_core.a /libfib_core.a
+
+# ── Stage 2: build the Go binary ─────────────────────────────────────────────
+FROM golang:${GO_VERSION}-alpine AS go-build
+WORKDIR /app
+
+RUN apk add --no-cache gcc musl-dev
+
+COPY --from=rust-build /libfib_core.a /app/target/release/libfib_core.a
+
+RUN --mount=type=bind,source=fib-go,target=/app/fib-go \
+    --mount=type=bind,source=fib-core/fib_core.h,target=/app/fib-core/fib_core.h \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /app/fib-go && \
+    CGO_ENABLED=1 go build -ldflags="-extldflags=-static" -o /fib-go ./cmd/main.go
+
+# ── Stage 3: minimal runtime image ───────────────────────────────────────────
+FROM alpine:3.18 AS final
+
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/bin/sh" \
+    --no-create-home \
+    --uid "${UID}" \
+    appuser
+USER appuser
+
+COPY --from=go-build /fib-go /bin/fib-go
+
+ENTRYPOINT ["/bin/sh"]

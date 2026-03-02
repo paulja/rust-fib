@@ -1,3 +1,5 @@
+pub mod ffi;
+
 pub fn fibonacci() -> impl FnMut() -> u64 {
     let (mut a, mut b) = (0, 1);
     move || {

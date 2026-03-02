@@ -1,11 +1,27 @@
 # fib
 
-A command-line Fibonacci calculator written in Rust.
+A Fibonacci calculator written in Rust, with an HTTP server, gRPC server, and a Go CLI that calls the Rust core via FFI.
 
-## Usage
+## Project structure
 
 ```
-fib <COMMAND> <N>
+fib/
+  fib-core/       ← Fibonacci logic; compiled as a Rust library and C-compatible shared/static lib
+  fib-cli/        ← Rust CLI binary
+  fib-http/       ← HTTP server (Axum, port 3000)
+  fib-grpc/       ← gRPC server (Tonic, port 50051)
+  fib-go/         ← Go CLI that calls fib-core via CGo FFI
+  docker/         ← Dockerfiles and compose file
+```
+
+## Rust CLI
+
+```sh
+cargo build --release
+cargo run -- number 10
+cargo run -- sequence 10
+cargo run -- serve
+cargo run -- grpc
 ```
 
 ### Commands
@@ -19,35 +35,66 @@ fib <COMMAND> <N>
 
 Valid range for `number` and `sequence`: `1–92` (max for u64 without overflow)
 
-### Examples
-
 ```sh
 fib number 10
 # 55
 
 fib sequence 10
-# 1
-# 1
-# 2
-# 3
-# 5
-# 8
-# 13
-# 21
-# 34
-# 55
+# 1 1 2 3 5 8 13 21 34 55
 ```
 
-### HTTP API
+## Go CLI (FFI)
 
-Start the server with `fib serve`, then use the following endpoints:
+The `fib-go` directory contains a Go CLI that calls `fib-core` via CGo. It supports two implementations for comparison: the native Go implementation and the Rust implementation via FFI.
+
+### Prerequisites
+
+- Go 1.26+
+- A C compiler (gcc or clang)
+- The `fib-core` release build: `cargo build --release -p fib-core`
+
+### Usage
+
+```sh
+go -C fib-go run ./cmd/main.go <n> <native|rust>
+```
+
+```sh
+go -C fib-go run ./cmd/main.go 10 native
+# [1 1 2 3 5 8 13 21 34 55]  (3.4µs, native)
+
+go -C fib-go run ./cmd/main.go 10 rust
+# [1 1 2 3 5 8 13 21 34 55]  (668ns, rust)
+```
+
+### Tests
+
+```sh
+go -C fib-go test ./...
+```
+
+### Container
+
+```sh
+docker build -f docker/Dockerfile.fib-go . -t fib-go
+docker run -it fib-go
+```
+
+This drops you into a shell. From there:
+
+```sh
+fib-go 10 native
+fib-go 10 rust
+```
+
+## HTTP API
+
+Start the server with `fib serve` or via Docker, then:
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/fib/{n}` | Returns the nth Fibonacci number |
 | `GET` | `/fib/sequence/{n}` | Returns the first n Fibonacci numbers |
-
-Valid range for `n`: `1–92`
 
 ```sh
 curl http://localhost:3000/fib/10
@@ -55,87 +102,62 @@ curl http://localhost:3000/fib/10
 
 curl http://localhost:3000/fib/sequence/5
 # {"n":5,"values":[1,1,2,3,5]}
-
-curl http://localhost:3000/fib/100
-# {"error":"n must be between 1 and 92"}
 ```
 
-### gRPC API
+## gRPC API
 
-Start the server with `fib grpc` (listens on port `50051`), then use `grpcurl`:
+Start the server with `fib grpc` or via Docker (listens on port `50051`), then use `grpcurl`:
 
 | RPC | Description |
 |-----|-------------|
 | `fib.FibonacciService/Number` | Returns the nth Fibonacci number |
 | `fib.FibonacciService/Sequence` | Streams the first n Fibonacci numbers |
 
-Valid range for `n`: `1–92`
-
 ```sh
 grpcurl -plaintext -d '{"n": 10}' localhost:50051 fib.FibonacciService/Number
 # {"n": "10", "value": "55"}
 
 grpcurl -plaintext -d '{"n": 5}' localhost:50051 fib.FibonacciService/Sequence
-# {"value": "1"}
-# {"value": "1"}
-# {"value": "2"}
-# {"value": "3"}
-# {"value": "5"}
-
-# List available services (requires reflection)
-grpcurl -plaintext localhost:50051 list
-```
-
-## Build & Run
-
-```sh
-cargo build --release
-cargo run -- number 10
-cargo run -- sequence 10
-cargo run -- serve
-cargo run -- grpc
+# {"value": "1"} {"value": "1"} {"value": "2"} {"value": "3"} {"value": "5"}
 ```
 
 ## Docker
-
-The `docker/` directory contains Dockerfiles for each server and a compose file to run both together.
 
 | File | Description |
 |------|-------------|
 | `docker/Dockerfile.http` | HTTP server image (port `3000`) |
 | `docker/Dockerfile.grpc` | gRPC server image (port `50051`) |
-| `docker/compose.yaml` | Launches both services |
+| `docker/Dockerfile.fib-go` | Go FFI CLI interactive image |
+| `docker/compose.yaml` | Launches HTTP and gRPC services |
 
 ```sh
-# Run both services
+# Run both Rust services
 docker compose -f docker/compose.yaml up
 
 # Run a single service
 docker compose -f docker/compose.yaml up http
 docker compose -f docker/compose.yaml up grpc
+
+# Run the Go FFI CLI interactively
+docker build -f docker/Dockerfile.fib-go . -t fib-go
+docker run -it fib-go
 ```
 
 ## Logging
 
-Both servers emit structured JSON logs to stdout using the `tracing` ecosystem. Log level is controlled by the `RUST_LOG` environment variable (default: `info`).
+Both Rust servers emit structured JSON logs to stdout via the `tracing` ecosystem. Log level is controlled by `RUST_LOG` (default: `info`).
 
 ```sh
 RUST_LOG=debug cargo run -- serve
 RUST_LOG=info,tower_http=debug cargo run -- grpc
 ```
 
-To set the log level in Docker:
-
-```yaml
-# docker/compose.yaml
-services:
-  grpc:
-    environment:
-      - RUST_LOG=info,tower_http=debug
-```
-
 ## Test
 
 ```sh
+# Rust
 cargo test
+
+# Go
+go -C fib-go test ./...
 ```
