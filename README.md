@@ -1,12 +1,12 @@
 # fib
 
-A Fibonacci calculator written in Rust, with an HTTP server, gRPC server, and a Go CLI that calls the Rust core via FFI.
+A Fibonacci calculator written in Rust, with an HTTP server, gRPC server, a Go CLI that calls the Rust core via CGo FFI, and a WebAssembly build for use in browsers and Go WASM runtimes.
 
 ## Project structure
 
 ```
 fib/
-  fib-core/       ← Fibonacci logic; compiled as a Rust library and C-compatible shared/static lib
+  fib-core/       ← Fibonacci logic; compiled as a Rust library, C-compatible shared/static lib, and WASM module
   fib-cli/        ← Rust CLI binary
   fib-http/       ← HTTP server (Axum, port 3000)
   fib-grpc/       ← gRPC server (Tonic, port 50051)
@@ -87,12 +87,34 @@ fib-go 10 native
 fib-go 10 rust
 ```
 
+## WebAssembly
+
+`fib-core` can be compiled to WebAssembly via the `wasm` feature flag. The WASM build exposes `fib_number` and `fib_sequence` for consumption from a browser (plain HTML + JS) or a Go WASM runtime (`wazero`).
+
+### Prerequisites
+
+- `wasm-pack`: `cargo install wasm-pack`
+
+### Build
+
+```sh
+wasm-pack build fib-core --target web -- --features wasm
+# Output: fib-core/pkg/
+```
+
+The `pkg/` directory contains the `.wasm` binary and a JS glue module. The WASM binary and JS glue are embedded into the `fib-http` binary at compile time — no separate files to ship.
+
+### Comparison page
+
+`fib-http` serves a comparison page at `http://localhost:3000` that computes the Fibonacci sequence two ways side by side: client-side in WASM (running in your browser) and server-side via the REST API. Same Rust logic, different execution environments.
+
 ## HTTP API
 
 Start the server with `fib serve` or via Docker, then:
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/` | WASM vs REST comparison page |
 | `GET` | `/fib/{n}` | Returns the nth Fibonacci number |
 | `GET` | `/fib/sequence/{n}` | Returns the first n Fibonacci numbers |
 
@@ -129,6 +151,8 @@ grpcurl -plaintext -d '{"n": 5}' localhost:50051 fib.FibonacciService/Sequence
 | `docker/Dockerfile.grpc` | gRPC server image (port `50051`) |
 | `docker/Dockerfile.fib-go` | Go FFI CLI interactive image |
 | `docker/compose.yaml` | Launches HTTP and gRPC services |
+
+The first build of the `http` image takes longer than usual — it compiles `wasm-pack` from source inside the container. Subsequent builds use Docker's layer cache and are fast.
 
 ```sh
 # Run both Rust services

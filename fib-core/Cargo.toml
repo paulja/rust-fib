@@ -5,3 +5,9 @@ edition = "2024"
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2.114", optional = true }
+
+[features]
+wasm = ["wasm-bindgen"]

@@ -7,15 +7,21 @@ WORKDIR /app
 
 RUN apk add --no-cache clang lld musl-dev git
 
-RUN --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=bind,source=fib-core,target=fib-core \
-    --mount=type=bind,source=fib-cli,target=fib-cli \
-    --mount=type=bind,source=fib-http,target=fib-http \
-    --mount=type=bind,source=fib-grpc,target=fib-grpc \
-    --mount=type=cache,target=/app/target/ \
+# Install wasm-pack and the WASM target as separate layers so they are cached
+# and not reinstalled on every source change.
+RUN cargo install wasm-pack
+RUN rustup target add wasm32-unknown-unknown
+
+COPY Cargo.toml Cargo.lock ./
+COPY fib-core fib-core
+COPY fib-cli fib-cli
+COPY fib-http fib-http
+COPY fib-grpc fib-grpc
+
+RUN --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
+    wasm-pack build fib-core --target web -- --features wasm && \
     cargo build --locked --release --bin fib-http --bin fib-cli && \
     cp ./target/release/fib-http /bin/server && \
     cp ./target/release/fib-cli /bin/fib

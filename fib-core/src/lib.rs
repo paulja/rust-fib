@@ -1,4 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
 pub mod ffi;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 pub fn fibonacci() -> impl FnMut() -> u64 {
     let (mut a, mut b) = (0, 1);

@@ -1,7 +1,29 @@
-use axum::{Json, Router, extract::Path, http::StatusCode, routing::get};
+use axum::{Json, Router, body::Body, extract::Path, http::{StatusCode, header}, response::{Html, IntoResponse, Response}, routing::get};
 use fib_core::fibonacci;
 use serde::Serialize;
 use tower_http::trace::TraceLayer;
+
+static INDEX_HTML: &str = include_str!("index.html");
+static FIB_CORE_JS: &[u8] = include_bytes!("../../fib-core/pkg/fib_core.js");
+static FIB_CORE_WASM: &[u8] = include_bytes!("../../fib-core/pkg/fib_core_bg.wasm");
+
+async fn index() -> Html<&'static str> {
+    Html(INDEX_HTML)
+}
+
+async fn pkg_js() -> impl IntoResponse {
+    Response::builder()
+        .header(header::CONTENT_TYPE, "text/javascript; charset=utf-8")
+        .body(Body::from(FIB_CORE_JS.to_vec()))
+        .unwrap()
+}
+
+async fn pkg_wasm() -> impl IntoResponse {
+    Response::builder()
+        .header(header::CONTENT_TYPE, "application/wasm")
+        .body(Body::from(FIB_CORE_WASM.to_vec()))
+        .unwrap()
+}
 
 #[derive(Serialize)]
 struct FibNumberResponse {
@@ -52,6 +74,9 @@ async fn fib_sequence(
 
 pub(crate) fn router() -> Router {
     Router::new()
+        .route("/", get(index))
+        .route("/pkg/fib_core.js", get(pkg_js))
+        .route("/pkg/fib_core_bg.wasm", get(pkg_wasm))
         .route("/fib/{n}", get(fib_number))
         .route("/fib/sequence/{n}", get(fib_sequence))
         .layer(TraceLayer::new_for_http())
@@ -73,6 +98,45 @@ mod tests {
 
     fn server() -> TestServer {
         TestServer::new(router()).unwrap()
+    }
+
+    // --- / (index) ---
+
+    #[tokio::test]
+    async fn index_returns_html() {
+        let resp = server().get("/").await;
+        resp.assert_status_ok();
+        let ct = resp.headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        assert!(ct.contains("text/html"), "expected text/html, got: {ct}");
+        assert!(resp.text().contains("Fibonacci"));
+    }
+
+    #[tokio::test]
+    async fn pkg_js_serves_javascript() {
+        let resp = server().get("/pkg/fib_core.js").await;
+        resp.assert_status_ok();
+        let ct = resp.headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        assert!(ct.contains("text/javascript"), "expected text/javascript, got: {ct}");
+        assert!(!resp.text().is_empty());
+    }
+
+    #[tokio::test]
+    async fn pkg_wasm_serves_wasm() {
+        let resp = server().get("/pkg/fib_core_bg.wasm").await;
+        resp.assert_status_ok();
+        let ct = resp.headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        assert_eq!(ct, "application/wasm", "expected application/wasm, got: {ct}");
+        // All valid WASM binaries start with the magic bytes `\0asm`
+        assert_eq!(&resp.as_bytes()[..4], b"\0asm");
     }
 
     // --- /fib/{n} ---

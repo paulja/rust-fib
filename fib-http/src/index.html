@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fibonacci — WASM vs Server</title>
+  <style>
+    body { font-family: monospace; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; }
+    p.desc { color: #555; margin-bottom: 1.5rem; }
+    .controls { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+    input[type=number] { width: 5rem; padding: 0.3rem; font-family: monospace; font-size: 1rem; }
+    button { padding: 0.4rem 1rem; font-family: monospace; font-size: 1rem; cursor: pointer; }
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .panel h2 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .timing { font-size: 0.85rem; color: #888; margin: 0 0 0.5rem; }
+    .output { background: #f4f4f4; padding: 0.75rem; border-radius: 4px; min-height: 3rem; word-break: break-word; margin: 0; font-size: 0.85rem; white-space: pre-wrap; }
+    #status { font-size: 0.85rem; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>Fibonacci — WASM vs Server</h1>
+  <p class="desc">
+    Computes the Fibonacci sequence two ways: client-side in WebAssembly (Rust compiled to WASM,
+    running in your browser) and server-side via the REST API. Same logic, different execution environments.
+  </p>
+
+  <div class="controls">
+    <label>n <input type="number" id="n" value="10" min="1" max="92"></label>
+    <button id="compare" disabled>Compare</button>
+    <span id="status">Loading WASM…</span>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>Client-side (WASM)</h2>
+      <p class="timing" id="wasm-time">—</p>
+      <pre class="output" id="wasm-output"></pre>
+    </div>
+    <div class="panel">
+      <h2>Server-side (REST API)</h2>
+      <p class="timing" id="api-time">—</p>
+      <pre class="output" id="api-output"></pre>
+    </div>
+  </div>
+
+  <script type="module">
+    import init, { fib_sequence } from '/pkg/fib_core.js';
+
+    const btn = document.getElementById('compare');
+    const status = document.getElementById('status');
+
+    await init();
+    btn.disabled = false;
+    status.textContent = 'WASM ready';
+
+    btn.addEventListener('click', async () => {
+      const n = parseInt(document.getElementById('n').value, 10);
+
+      // Client-side: WASM (runs entirely in the browser)
+      const t0 = performance.now();
+      const seq = fib_sequence(BigInt(n));
+      const t1 = performance.now();
+      document.getElementById('wasm-time').textContent = `${(t1 - t0).toFixed(3)} ms`;
+      document.getElementById('wasm-output').textContent = Array.from(seq, v => v.toString()).join(', ');
+
+      // Server-side: REST API (round-trip to the Rust server)
+      const t2 = performance.now();
+      const resp = await fetch(`/fib/sequence/${n}`);
+      const data = await resp.json();
+      const t3 = performance.now();
+      document.getElementById('api-time').textContent = `${(t3 - t2).toFixed(3)} ms`;
+      document.getElementById('api-output').textContent = data.values.join(', ');
+    });
+  </script>
+</body>
+</html>
