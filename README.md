@@ -11,6 +11,7 @@ fib/
   fib-http/       ← HTTP server (Axum, port 3000)
   fib-grpc/       ← gRPC server (Tonic, port 50051)
   fib-go/         ← Go CLI that calls fib-core via CGo FFI
+  fib-wasm/       ← Go CLI that calls fib-core via wazero (pure-Go WASM runtime, no CGo)
   docker/         ← Dockerfiles and compose file
 ```
 
@@ -87,9 +88,33 @@ fib-go 10 native
 fib-go 10 rust
 ```
 
-## WebAssembly
+## Go CLI (WASM)
 
-`fib-core` can be compiled to WebAssembly via the `wasm` feature flag. The WASM build exposes `fib_number` and `fib_sequence` for consumption from a browser (plain HTML + JS) or a Go WASM runtime (`wazero`).
+The `fib-wasm` directory contains a Go CLI that calls `fib-core` via [wazero](https://github.com/tetratelabs/wazero) — a pure-Go WASM runtime with no CGo dependency. The same `.wasm` binary used by the browser comparison page runs here inside a Go-managed sandbox.
+
+Contrast with `fib-go`: that uses CGo to link against a native `.dylib` at runtime. This uses no native linking at all — the WASM binary is embedded in the Go binary at compile time via `//go:embed`.
+
+### Prerequisites
+
+- Go 1.25+
+- The WASM build: `make build-wasm`
+
+### Usage
+
+```sh
+make build-wasm
+go -C fib-wasm run . <n>
+```
+
+```sh
+go -C fib-wasm run . 10
+# fib(10) = 55
+# sequence: [1 1 2 3 5 8 13 21 34 55]
+```
+
+## Browser WASM (fib-http comparison page)
+
+`fib-core` can be compiled to WebAssembly for browser use via the `wasm` feature flag and `wasm-pack`. The output is embedded into the `fib-http` binary at compile time.
 
 ### Prerequisites
 
@@ -102,11 +127,9 @@ wasm-pack build fib-core --target web -- --features wasm
 # Output: fib-core/pkg/
 ```
 
-The `pkg/` directory contains the `.wasm` binary and a JS glue module. The WASM binary and JS glue are embedded into the `fib-http` binary at compile time — no separate files to ship.
-
 ### Comparison page
 
-`fib-http` serves a comparison page at `http://localhost:3000` that computes the Fibonacci sequence two ways side by side: client-side in WASM (running in your browser) and server-side via the REST API. Same Rust logic, different execution environments.
+`fib-http` serves a comparison page at `http://localhost:3000` that runs the same Rust logic two ways side by side: client-side in WASM (your browser) and server-side via the REST API.
 
 ## HTTP API
 
@@ -182,6 +205,9 @@ RUST_LOG=info,tower_http=debug cargo run -- grpc
 # Rust
 cargo test
 
-# Go
+# Go (FFI)
 go -C fib-go test ./...
+
+# Go (WASM) — requires make build-wasm first
+go -C fib-wasm test ./...
 ```

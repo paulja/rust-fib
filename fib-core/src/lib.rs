@@ -4,6 +4,9 @@ pub mod ffi;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
+#[cfg(target_arch = "wasm32")]
+pub mod wasi;
+
 pub fn fibonacci() -> impl FnMut() -> u64 {
     let (mut a, mut b) = (0, 1);
     move || {
